@@ -1,0 +1,552 @@
+---
+title: "Desastres Socioambientais"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+---
+
+
+```{r setup, include = FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(readxl)
+library(ggplot2)
+library(DT)
+library(scales)
+library(RColorBrewer)
+library(shapefiles)
+library(raster)
+library(maps)
+
+BancoDeDados <- read_excel("BancoDeDados.xlsx")
+```
+
+
+
+Contexto
+========================================
+
+**Dashboard de desastres socioambientais**
+
+**Aluna:** Carolina Locatelli Colla     
+
+**Contato:** carolinalcolla\@hotmail.com 
+
+**---------**
+
+**Dados:** 
+Os dados utilizados são referentes ao estado do Acre, contemplando 1972 a 2016. Eles foram obtidos através do banco S2ID (Sistema Integrado de Informações sobre Desastres) que é composto por arquivos digitais no formato PDF e abastecido pela Secretaria Nacional de Proteção e Defesa Civil e disponibilizado publicamente.
+
+**---------**
+
+**Contexto:** 
+O termo socioambiental é utilizado devido aos desastres serem resultado de uma ação conjunta entre sociedade e meio ambiente. Sua ocorrência pode impactar diversos setores e causar prejuízos sociais e ambientais a uma dada região. Para tanto, faz-se importante a sistematização da informação por meio de bancos de dados e sua posterior análise por meio de "dashboards", que são paineis visuais utilizados para apresentar informações, permitindo deste modo a avaliação qualitativa e quantitativa das perdas, assim como a identificação de variáveis indicadoras de risco, indicadores fundamentais na criação de políticas pública de redução ao risco e vulnerabilidade de uma população. Para este dashboard foram utilizadas as seguintes variáveis para análise:
+
+**DataInicial:** Dia/Mês/Ano quando se iniciou o desastre;
+
+**AnoMes:** Ano e Mês da ocorrência do desastre;
+
+**Dia:** Dia da ocorrência do desastre;
+
+**Mês:** Mês da ocorrência do desastre;
+
+**Ano:** Ano da ocorrência do desastre;
+
+**Evento:** Um fenômeno ou processo, natural ou social, que gera um impacto sobre pessoas e/ou seus bens ocasionando o desastre;
+
+**Geografia:** Onde ocorreu o desastre;
+
+**CD_GEOCMU:** Qual o código IBGE do município onde ocorreu o desastre;
+
+**Mortos:** Quantidade de mortos consequência do desastre;
+
+**Causa:** Fenômeno que desencadeou o evento;
+
+**PrejuizosSociaisMILReais:** Prejuízo social resultado do desastre;
+
+**PrejuizosEconomicosMILReais:** Prejuízo econômico resultado do desastre.
+
+
+**---------** 
+
+**Abas:** O dashboard de Desastres Socioambinetais é composto por 9 abas:
+
+**Contexto:** Apresentação geral do dashboard e das variáveis que o compõem;
+
+**Distribuição Temporal:** Composta por 2 gráficos, sendo eles o primeiro deles referente ao número de ocorrências de desastres por ano e o segundo um gráfico de série temporal indicando a distribuição mês/ano dos desastres;
+
+**Evento:** Composta por uma tabela, contendo informações referentes ao todos os eventos registrados, e um gráfico, onde são apresentados os 5 eventos que ocorreram com maior frequência;
+
+**Prejuízos:** Esta aba é composta por uma tabela contendo informações sobre o total dos prejuízos econômicos e sociais que cada tipo de evento acarretou;
+
+**Causas:** Composta por dois gráficos, o primeiro exibindo em porcentagem as principais causas que seviram como impulsionador da ocorrência dos eventos e o segundo exibindo por evento, a porcentagem de vezes que cada causa foi o gatilho para sua ocorrência;
+
+**Municípios:** Aba composta por uma tabela , contendo informações relacionadas ao prejuízo total econômico e social segregado por município além do número total de ocorrências e atingidos; e um gráfico contendo o total de ocorrências de eventos dos 10 municipios mais atingidos;
+
+**Mapa de atingidos por municípios:** Contém um mapa onde são exibidos o número de atingidos por município;
+
+**Mapa de ocorrência por municípios:** Contém um mapa onde são exibidos o número de ocorrências por município;
+
+**Mortes:** Composta por dois gráficos, o primeiro referente ao total de registro, mostrando quantos deles ocosionaram mortes, quantos não causaram e quantos não possuiem informações neste quesito; e o segundo exibindo as mesmas informações do gráfico anterio, porém segregando por tipo de evento.
+
+
+
+
+Distribuição temporal
+=======================================================================
+
+
+Column {data-width=500}
+-------------------------------------
+
+### **Distribuição do número de ocorrência por Ano**
+```{r}
+#leitura banco
+attach(BancoDeDados)
+BancoDeDados$Ano<-as.numeric(BancoDeDados$Ano)
+
+#Numero de ocorrencia por Ano
+BancoDeDados%>% 
+  count(Ano) %>%
+  ggplot() +
+  geom_col(
+    aes(x = Ano, y = n, fill = Ano),
+    show.legend = FALSE
+  ) +
+  geom_label(aes(x = Ano, y = n/2, label = n)) +
+  labs(
+    x = "Evento",
+    y = "Número de ocorrencias",
+    title = "Número de ocorrência por ano"
+  )+
+  scale_x_continuous(breaks = seq(170, 2016, 2))+
+  scale_y_continuous(breaks = seq(0, 20, 2))+
+  theme(
+    axis.text.x = element_text(size=8, angle=45)
+  ) 
+
+
+
+```
+
+
+### **Número de ocorrências por mês/ano** 
+```{r}
+#leitura banco
+attach(BancoDeDados)
+BancoDeDados$AnoMes<-as.character(BancoDeDados$AnoMes)
+
+Tabeladedados = BancoDeDados %>% 
+  group_by(AnoMes) %>% 
+  summarise(ocorrencias = n()) 
+
+AnoData = str_sub(Tabeladedados$AnoMes, end = 4)
+MesData = str_sub(Tabeladedados$AnoMes, start = 5)
+DataGeral = str_c(AnoData, "-", MesData, "-01")
+Tabeladedados$AnoData = AnoData
+Tabeladedados$MesData = MesData
+Tabeladedados$DataGeral = DataGeral
+
+Tabeladedados$DataGeral<-as.Date(Tabeladedados$DataGeral)
+
+
+Tabeladedados$Year <- format(Tabeladedados$DataGeral, "%Y")
+Tabeladedados$Month <- format(Tabeladedados$DataGeral, "%b")
+Tabeladedados$Day <- format(Tabeladedados$DataGeral, "%d")
+
+
+ggplot(Tabeladedados, aes(DataGeral, ocorrencias)) +
+  geom_point() +
+  geom_line() +  
+  xlab("Período (meses)") + ylab("Número de desastres") +
+  theme(plot.subtitle = element_text(vjust = 1), 
+        plot.caption = element_text(vjust = 1), 
+        panel.grid.major = element_line(colour = NA), 
+        axis.title = element_text(size = 16), 
+        axis.text = element_text(size = 14), 
+        axis.text.x = element_text(size = 14), 
+        axis.text.y = element_text(size = 14), 
+        plot.title = element_text(size = 14), 
+        panel.background = element_rect(fill = NA), 
+        legend.position = "none") + theme(panel.grid.major = element_line(colour = "gray65"), 
+                                          panel.grid.minor = element_line(colour = NA)
+  )+
+  scale_x_date(date_breaks = "5 year",
+               date_labels = "%Y")
+
+
+```
+
+
+Evento
+=======================================================================
+
+Column {data-width=500}
+-------------------------------------
+### **Eventos que ocorrem com maior frequência** 
+```{r}
+attach(BancoDeDados)
+
+
+total = nrow(BancoDeDados)
+
+BancoDeDados %>% 
+  group_by(Evento) %>% 
+  summarise(qtd_ocorrencias = n(), 
+            freq = round((n()/total)*100, 2)
+            ) %>%  
+  DT::datatable( colnames = c('Evento', 'Número de ocorrencias', 'Frequência (%)'), rownames = FALSE)
+
+
+``` 
+
+
+### **Top 5 Eventos que ocorreram com maior frequência**
+```{r}
+#leitura banco
+attach(BancoDeDados)
+BancoDeDados.freq=table(BancoDeDados$Evento)
+civil = table(BancoDeDados$Evento)
+
+
+#Numero de ocorrencia por Evento
+BancoDeDados%>% 
+  count(Evento) %>%
+  top_n(5, n) %>%
+  ggplot() +
+  geom_col(
+    aes(x = Evento, y = n, fill = Evento),
+    show.legend = FALSE
+  ) +
+  geom_label(aes(x = Evento, y = n/2, label = n)) +
+  coord_flip() +
+  labs(
+    x = "Evento",
+    y = "Número de ocorrencias",
+    title = "Top 5 Evento com maior número de ocorrências"
+  )
+
+```
+
+
+
+Prejuízos
+=======================================================================
+
+Column {data-width=500}
+-------------------------------------
+### **Prejuízos totais consequências de Desastres Socioambientais** 
+```{r}
+attach(BancoDeDados)
+
+BancoDeDados %>% 
+  group_by(Evento) %>% 
+  summarise(qtd_ocorrencias = n(),
+            prejuiso_economico = round(sum(PrejuizosEconomicosMILReais, na.rm = TRUE), 1),
+            prejuiso_social = round(sum(PrejuizosSociaisMILReais, na.rm = TRUE), 1)
+            ) %>%  
+  DT::datatable( colnames = c('Evento', 'Quantidade de Ocorrências', 'Total Prejuízo Econômico (MIL R$)', 'Total Prejuízo Social (MIL R$)'), rownames = FALSE)
+
+``` 
+
+
+Causas
+=======================================================================
+
+Column {data-width=500}
+-------------------------------------
+### **Quantdade de ocorrência por causa"** 
+```{r}
+#leitura banco
+attach(BancoDeDados)
+
+total = nrow(BancoDeDados)
+
+PorcentagemCausa = BancoDeDados %>% 
+  group_by(Causa) %>% 
+  summarise(qtd_ocorrencias = n(), 
+            freq = round((n()/total)*100, 2)
+            )
+
+PorcentagemCausa%>% 
+  ggplot() +
+  geom_col(
+    aes(x = Causa, y = freq, fill = Causa),
+    show.legend = FALSE
+  ) +
+  geom_label(aes(x = Causa, y = freq, label = str_c(freq, "%"))) +
+  theme(
+    axis.text.x = element_text(size=8, angle=30)
+  ) +
+  labs(
+    x = "Causa",
+    y = "Frequência em porcentagem",
+    title = "Principais motivos que ocasionaram os eventos"
+  )
+
+
+
+```
+
+
+### **Causas de cada tipo de ocorrência** 
+```{r}
+#leitura banco
+attach(BancoDeDados)
+BancoDeDados.freq=table(BancoDeDados$Evento)
+civil = table(BancoDeDados$Evento)
+BancoDeDados$Mortos<-as.numeric(BancoDeDados$Mortos)
+
+ggplot(BancoDeDados, aes(x = Evento, fill = Causa)) + geom_bar(position = "fill") +
+  scale_y_continuous(labels = percent_format()) +
+   theme(
+    axis.text.x = element_text(size=8, angle=45)
+  ) +
+  labs(
+    x = "Evento",
+    y = "Quantidade de registros",
+    title = "Causas de cada tipo de ocorrência"
+  )
+```
+
+
+Muncípios
+=======================================================================
+
+Column {data-width=500}
+-------------------------------------
+### **Municípios atingidos por Desastres Socioambientais** 
+```{r}
+attach(BancoDeDados)
+
+BancoDeDados %>% 
+
+  group_by(Geografia) %>% 
+  summarise(qtd_ocorrencias = n(),
+            atingidos_municipio = sum(Atingidos, na.rm = TRUE),
+            prejuiso_economico = round(sum(PrejuizosEconomicosMILReais, na.rm = TRUE), 1),
+            prejuiso_social = round(sum(PrejuizosSociaisMILReais, na.rm = TRUE), 1)
+            ) %>%  
+  DT::datatable( colnames = c('Municipios', 'Número de ocorrencias', 'Número de Atingidos','Total Prejuízo Econômico (MIL R$)', 'Total Prejuízo Social (MIL R$)'), rownames = FALSE)
+
+``` 
+
+
+### **Top 10 Municipios mais atingidas por ocorrências**
+```{r}
+#leitura banco
+attach(BancoDeDados)
+
+#Numero de ocorrencia por Cidade
+BancoDeDados%>% 
+  count(Geografia) %>%
+  top_n(10, n) %>%  #ta repetindo quando tem numero igual na ultima posicao
+  mutate(
+    Geografia = forcats::fct_reorder(Geografia, n)
+  ) %>% 
+  ggplot() +
+  geom_col(
+    aes(x = Geografia, y = n, fill = Geografia),
+    show.legend = FALSE
+  ) +
+  geom_label(aes(x = Geografia, y = n/2, label = n)) +
+  coord_flip() +
+  labs(
+    x = "Municipios",
+    y = "Número de ocorrencias",
+    title = "Top 10 Municipios com maior número de ocorrências"
+  )
+
+```
+
+Mapa de atingidos por município
+=======================================================================
+
+Column {data-width=500}
+-------------------------------------
+
+### **Número de pessoas atingidos por município** 
+```{r}
+#leitura banco
+attach(BancoDeDados)
+
+BancoDeDados$Atingidos[which(is.na(BancoDeDados$Atingidos))] <- 0
+
+TabelaAtingido = BancoDeDados %>% 
+  group_by(CD_MUN) %>% 
+  summarise(atingidos_municipio = sum(Atingidos, na.rm = TRUE) ) 
+
+# Carregando o arquivo
+MAPARS=shapefile("/cloud/project/Mapa/AC_Municipios_2019.shp")
+
+# Transforma os dados do Atingidos em uma variável categórica.
+TabelaAtingido$Divisao = cut(TabelaAtingido$atingidos_municipio, breaks=c(0,0.9,5000,10000,15000,20000,2500000),
+labels=c('0', '1 a 5000','5001 a 10000', '10001 a 15000', '15001 a 20000', '+ 20000'))
+
+# Selecionamos algumas cores de uma paleta de cores do pacote RColorBrewer
+paletaDeCores = brewer.pal(9, 'Oranges')
+paletaDeCores = paletaDeCores[-c(3,6,8)]
+ 
+# Agora fazemos um pareamento entre as faixas da variável sobre Divisao (categórica) e as cores:
+coresDasCategorias = data.frame(Divisao=levels(TabelaAtingido$Divisao), Cores=paletaDeCores)
+BancoDeDados_cores = merge(TabelaAtingido, coresDasCategorias)
+
+#Une a base de dados da planilha com o mapa pelo nome do município
+BancoDeDadosMAPA=merge(MAPARS,BancoDeDados_cores,by="CD_MUN", all.x=T, duplicateGeoms = TRUE) 
+
+# Configurando tela (reduzindo as margens da figura)
+parDefault = par(no.readonly = T)
+layout(matrix(c(1,2),nrow=2),widths= c(1,1), heights=c(4,1))
+par (mar=c(0,0,0,0))
+ 
+plot(BancoDeDadosMAPA, col=as.character(BancoDeDadosMAPA$Cores))
+legend(x='topright', legend=rev(levels(BancoDeDadosMAPA$Divisao)),
+ box.lty=0, fill=rev(paletaDeCores),cex=.7, ncol=2,
+ title='Número de atingidos pessoas por Município  ')
+#map.axes()
+maps::map.scale(ratio=F, cex = 0.6)
+#abline(h = 10, lty = 2)
+
+#norte
+arrow2 <- layout.north.arrow(type = 1) 
+Narrow2 <- maptools::elide(arrow2, shift = c(extent(BancoDeDadosMAPA)[1],extent(BancoDeDadosMAPA)[3]))
+plot(Narrow2, add = TRUE, col = "black")
+
+```
+
+Mapa de ocorrências por município
+=======================================================================
+
+Column 
+-------------------------------------
+
+### **Número de ocorrência por município** 
+```{r}
+attach(BancoDeDados)
+BancoDeDados$Atingidos[which(is.na(BancoDeDados$Atingidos))] <- 0
+
+TabelaEvento = BancoDeDados %>% 
+  group_by(CD_MUN) %>% 
+  summarise(qtd_ocorrencias = n()) 
+
+# Carregando o arquivo
+MAPARS=shapefile("/cloud/project/Mapa/AC_Municipios_2019.shp")
+
+# Transforma os dados do Municipio em uma variável categórica.
+TabelaEvento$Divisao = cut(TabelaEvento$qtd_ocorrencias, breaks=c(0,0.9,10,20,30,40,2500000),
+labels=c('0', '1 a 10','11 a 20', '21 a 30', '31 a 40', '+ 40'))
+
+# Selecionamos algumas cores de uma paleta de cores do pacote RColorBrewer
+paletaDeCores = brewer.pal(9, 'Oranges')
+paletaDeCores = paletaDeCores[-c(3,6,8)]
+ 
+# Agora fazemos um pareamento entre as faixas da variável sobre Divisao (categórica) e as cores:
+coresDasCategorias = data.frame(Divisao=levels(TabelaEvento$Divisao), Cores=paletaDeCores)
+BancoDeDados_cores_evento = merge(TabelaEvento, coresDasCategorias)
+
+#Une a base de dados da planilha com o mapa pelo nome do município
+BancoDeDadosMAPA_evento=merge(MAPARS,BancoDeDados_cores_evento,by="CD_MUN", all.x=T, duplicateGeoms = TRUE) 
+
+# Configurando tela (reduzindo as margens da figura)
+parDefault = par(no.readonly = T)
+layout(matrix(c(1,2),nrow=2),widths= c(1,1), heights=c(4,1))
+par (mar=c(0,0,0,0))
+ 
+
+# Plotando mapa
+#plot(BancoDeDadosMAPA_evento, col=as.character(BancoDeDadosMAPA_evento$Cores))
+#plot(1,1,pch=NA, axes=F)
+#legend(x='center', legend=rev(levels(BancoDeDadosMAPA_evento$Divisao)),
+# box.lty=0, fill=rev(paletaDeCores),cex=.8, ncol=2,
+# title='Número de ocorrência por Município')
+
+
+plot(BancoDeDadosMAPA_evento, col=as.character(BancoDeDadosMAPA_evento$Cores))
+legend(x='topright', legend=rev(levels(BancoDeDadosMAPA_evento$Divisao)),
+ box.lty=0, fill=rev(paletaDeCores),cex=.7, ncol=2,
+ title='Número de ocorrência por Município   ')
+#map.axes()
+maps::map.scale(ratio=F, cex = 0.6)
+#abline(h = 10, lty = 2)
+
+#norte
+arrow2 <- layout.north.arrow(type = 1) 
+Narrow2 <- maptools::elide(arrow2, shift = c(extent(BancoDeDadosMAPA)[1],extent(BancoDeDadosMAPA)[3]))
+plot(Narrow2, add = TRUE, col = "black")
+
+```
+
+Mortes
+=======================================================================
+
+Column {data-width=500}
+-------------------------------------
+
+### **Total da quantidade de eventos que causaram mortes** 
+```{r}
+#leitura banco
+attach(BancoDeDados)
+BancoDeDados$Mortos<-as.numeric(BancoDeDados$Mortos)
+
+BancoDeDados$Mortos[which(is.na(BancoDeDados$Mortos))] <- -1
+
+BancoDeDados$SimNao = cut(BancoDeDados$Mortos, breaks=c(-5,-0.5,0.9, 2500000),
+labels=c('Sem Informações', 'Não Houve', 'Houve'))
+
+
+total = nrow(BancoDeDados)
+
+PorcentagemMortos = BancoDeDados %>% 
+  group_by(SimNao) %>% 
+  summarise(qtd_ocorrencias = n(), 
+            freq = round((n()/total)*100, 2)
+            )
+
+PorcentagemMortos%>% 
+  ggplot() +
+  geom_col(
+    aes(x = SimNao, y = freq, fill = SimNao),
+    show.legend = FALSE
+  ) +
+  geom_label(aes(x = SimNao, y = freq, label = str_c(freq, "%"))) +
+  theme(
+    axis.text.x = element_text(size=8, angle=30)
+  ) +
+  labs(
+    x = "Categorias",
+    y = "Porcentagem das categorias",
+    title = "Frequência dos eventos que causaram mortes"
+  )
+
+
+
+```
+
+### **Ocorrências que causaram mortes por tipo de evento** 
+```{r}
+#leitura banco
+attach(BancoDeDados)
+BancoDeDados$Mortos<-as.numeric(BancoDeDados$Mortos)
+
+BancoDeDados$Mortos[which(is.na(BancoDeDados$Mortos))] <- -1
+
+BancoDeDados$Categoria = cut(BancoDeDados$Mortos, breaks=c(-5,-0.1,0.9, 2500000),
+labels=c('Sem Informações', 'Não Houve', 'Houve'))
+
+ggplot(BancoDeDados, aes(x = Evento, fill = Categoria)) + geom_bar(position = "fill")+
+  scale_y_continuous(labels = percent_format()) +
+   theme(
+    axis.text.x = element_text(size=8, angle=45)
+  ) +
+  labs(
+    x = "Evento",
+    y = "Quantidade de registros",
+    title = "Quantidade de eventos que causaram mortes"
+  )
+
+```
+
+
+
+
+
